@@ -1,0 +1,57 @@
+TÀI LIỆU YÊU CẦU DỰ ÁN (MINI PROJECT SRS) 
+Tên dự án: Ngân hàng số "RikkeiBank API"
+Lĩnh vực: Tài chính – Ngân hàng (Fintech)
+Khách hàng: Chi nhánh ngân hàng bán lẻ RikkeiBank
+
+I. Tổng quan về dự án
+Khách hàng RikkeiBank hiện đang quản lý hồ sơ khách hàng và giao dịch tài chính trên hệ thống Monolithic tập trung. Họ cần một hệ thống Backend (Web Service) Microservice phân tán để số hóa, chia nhỏ và mở rộng độc lập toàn bộ quy trình ngân hàng. Hệ thống này sẽ làm nền tảng (API) để đội ngũ Mobile App và Web App của họ tích hợp vào sau này.
+Yêu cầu tối thượng của khách hàng là: Dữ liệu tài chính phải bảo mật tuyệt đối, trải nghiệm người dùng liền mạch (không bắt đăng nhập liên tục), hệ thống chạy ổn định, có lưu vết lịch sử lỗi để bảo trì, và mã nguồn phải đạt tiêu chuẩn chất lượng cao.
+
+II. Yêu cầu nghiệp vụ từ khách hàng (Business Requirements)
+Lưu ý cho đội ngũ phát triển (Sinh viên): Khách hàng chỉ đưa ra "mong muốn". Các bạn tự phân tích để thiết kế các cấu trúc dữ liệu (mỗi service sở hữu cơ sở dữ liệu riêng – Database-per-service), các trường thông tin (fields) và các API endpoints cho phù hợp.
+Quản lý Hồ sơ & Danh mục (Catalog Management)
+Hệ thống cần quản lý thông tin của các đối tượng cốt lõi: Khách hàng (Customer), Nhân viên/Giao dịch viên (Staff), và Danh mục Loại tài khoản (Account Type)
+Đội ngũ quản trị phải có khả năng Thêm, Sửa, Xóa và Xem danh sách các đối tượng này một cách dễ dàng
+
+Nghiệp vụ Chuyển khoản & Giao dịch (Core Business)
+Khách hàng cần có khả năng "chuyển khoản" cho một tài khoản đích cụ thể với một số tiền nhất định
+Giao dịch viên (TELLER) có thể xem danh sách giao dịch đã thực hiện trong ngày
+Sau khi chuyển khoản thành công, hệ thống tạo ra "Bản ghi giao dịch" (Transaction) ghi nhận biến động số dư ghi nợ/ghi có của các tài khoản liên quan
+
+Phân quyền, Bảo mật & Trải nghiệm Đăng nhập (Security & Session Experience) 
+Khách hàng cực kỳ nhấn mạnh về quyền riêng tư và trải nghiệm liền mạch: 
+ADMIN (Quản trị viên): Có toàn quyền quản lý hệ thống (Thêm/Sửa/Xóa tài khoản, Khách hàng, Loại tài khoản). Có thể ép buộc một tài khoản bất kỳ phải đăng xuất khỏi hệ thống ngay lập tức nếu phát hiện rủi ro bảo mật (Thu hồi quyền truy cập)
+TELLER (Giao dịch viên): Chỉ được phép xem và xử lý giao dịch trong phạm vi được phân công, tuyệt đối không được can thiệp vào giao dịch của nhân viên khác
+CUSTOMER (Khách hàng): Chỉ được xem tài khoản, lịch sử giao dịch của chính mình và thực hiện chuyển khoản mới. Ứng dụng của khách hàng phải duy trì trạng thái đăng nhập lâu dài để họ không phải nhập lại mật khẩu mỗi lần mở app để xem số dư
+Khách vãng lai (Chưa đăng nhập) không thể xem bất kỳ dữ liệu tài chính nào
+
+III. Ràng buộc kỹ thuật & Tiêu chuẩn mã nguồn (Technical Constraints)
+Hệ thống Backend phải được xây dựng trên nền tảng Java Spring Boot Microservice (mỗi service sở hữu Database riêng) và tuân thủ các tiêu chuẩn sau: 
+Kiến trúc Giao tiếp (RESTful API): Mọi giao tiếp với hệ thống phải tuân thủ nghiêm ngặt chuẩn RESTful. Định dạng trao đổi dữ liệu thống nhất là JSON. Bắt buộc sử dụng đúng các HTTP Methods và trả về chuẩn xác các HTTP Status Codes
+Spring Cloud Config (Centralized Configuration): Tập trung cấu hình chung (Git/Local) cho mọi microservice
+Discovery – Service Registry (Eureka): Mỗi service tự động đăng ký và khám phá service khác theo tên
+API Gateway (Spring Cloud Gateway) & Load Balancing: Định tuyến request đến đúng service, cân bằng tải giữa các instance (Spring Cloud LoadBalancer)
+Giao tiếp đồng bộ (Synchronous): RestTemplate / OpenFeign để service gọi service theo tên Service Registry
+Giao tiếp bất đồng bộ (Asynchronous – Event-driven): WebFlux + Apache Kafka (Brokers, Topics, Producers, Consumers)
+Fault Tolerance: Resilience4j Circuit Breaker (3 trạng thái) để chống cascading failure giữa các service
+Distributed Caching: Spring Cache + Redis (kiểu Cache-Aside, dùng @Cacheable/@CachePut/@CacheEvict) để tăng hiệu năng
+Distributed Transactions với Saga Pattern (Choreography & Orchestrator): đảm bảo nhất quán giao dịch chuyển khoản khi không dùng ACID xuyên service
+Kiến trúc Microservice (MSA) & Lựa chọn mô hình: Hệ thống phải được phân tích, chuyển đổi từ mô hình Monolithic/SOA sang Microservice (MSA) cho các nghiệp vụ ngân hàng: chia thành nhiều microservice độc lập (customer-service, account-service, transaction-service, notification-service, identity-service...). Nêu rõ lý do lựa chọn MSA (tách rời, mở rộng độc lập, chịu lỗi) so với Monolithic.
+Cơ sở dữ liệu phân tán (Database-per-service): Mỗi microservice quản lý độc lập cơ sở dữ liệu của riêng mình; không truy cập trực tiếp DB của service khác, đảm bảo tách rời và dễ mở rộng.
+Giao tiếp đồng bộ (Service-to-Service): Dùng RestTemplate (SpringWeb) hoặc FeignClient (OpenFeign) kết hợp Spring Cloud LoadBalancer để service gọi service theo tên đăng ký trên Service Registry; mọi request bên ngoài đi qua Spring Cloud Gateway.
+Giao tiếp bất đồng bộ & Event-driven (WebFlux + Kafka): Dùng WebFlux (reactive) và Apache Kafka (Brokers, Topics, Partitions, Producers, Consumers) để trao đổi sự kiện giữa các service, giảm liên kết lỏng (Loose Coupling) và tăng hiệu năng (Event-driven Architecture). Phát hành sự kiện khi có nghiệp vụ quan trọng.
+Giao dịch phân tán với Saga Pattern: Nghiệp vụ xuyên service (chuyển khoản 2 tài khoản) không dùng transaction ACID xuyên service; phải triển khai Saga (Choreography hoặc Orchestrator) đảm bảo nhất quán cuối cùng, có cơ chế Compensating (rollback) khi một bước thất bại.
+Kháng lỗi hệ thống (Fault Tolerance): Hiểu và xử lý Cascading Failure giữa các service; dùng Resilience4j Circuit Breaker 3 trạng thái (CLOSED/OPEN/HALF_OPEN) chống lỗi dây chuyền, có fallback method xử lý khi service phụ thuộc gặp sự cố.
+Distributed Caching (Redis): Spring Cache + Redis theo chiến lược Cache-Aside (dùng @Cacheable/@CachePut/@CacheEvict) để giảm tải truy vấn và tăng tốc hiệu năng.
+Xác thực & Phân quyền giữa các service (JWT): Hạ tầng xác thực tập trung (identity-service) dùng JWT, @PreAuthorize phân quyền theo vai trò; token khi sai trả về 401/403 phù hợp.
+Kiểm soát Luồng lỗi (Exception Handling) & Quality: Sử dụng AOP bắt ngoại lệ tập trung, trả về cấu trúc lỗi chuẩn; viết Unit Test cho tầng Service/Controller và dùng Jacoco để đo độ bao phủ.
+
+IV. Sản phẩm bàn giao (Deliverables)
+Source code hoàn chỉnh kiến trúc Microservice (các service + cấu hình Config Server, Eureka, Gateway, Kafka, Redis) đẩy lên hệ thống quản lý mã nguồn (Git).
+Bản xuất Collection của Postman chứa đầy đủ các API qua Gateway, sắp xếp theo thư mục của từng service.
+Kết quả minh chứng Infrastructure: khởi chạy Config Server, Eureka, Gateway; các service đăng ký và hiển thị trên dashboard Eureka.
+Kịch bản (Flow) Nghiệp vụ chính: chuyển khoản 2 tài khoản qua Saga (Choreography/Orchestrator) trừ & cộng đúng số dư, ghi nhận giao dịch trong transaction-service.
+Kịch bản rollback: chủ động gây lỗi giữa luồng chuyển khoản, kiểm tra số dư không bị du lệch, có sự kiện compensating trên Kafka.
+Kịch bản bất đồng bộ: notification-service nhận sự kiện từ Kafka (consumer) và gửi thông báo biến động (Event-driven).
+Kịch bản kháng lỗi & caching: Circuit Breaker đổi trạng thái khi service đích ngưng (cascading failure), Redis cache giảm tải truy vấn (Cache-Aside).
+Thuyết trình nhóm: mô phỏng luồng làm việc qua API Gateway, trình diễn Saga rollback và Kafka event trên Postman.
